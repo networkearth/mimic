@@ -1,0 +1,2 @@
+haven @ git+https://github.com/networkearth/haven@main
+watercycle @ git+https://github.com/networkearth/watercycle@main
