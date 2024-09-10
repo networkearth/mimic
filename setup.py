@@ -9,6 +9,7 @@ setup(
     install_requires=[
         "click==8.1.7",
         "tensorflow==2.16.1",
+        "pandas==2.2.2",
     ],
     entry_points={
         "console_scripts": [
