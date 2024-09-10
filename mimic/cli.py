@@ -1,4 +1,8 @@
+import json
+
 import click
+
+from mimic.log_odds.build_tfrecord import build_tfrecord as log_odds_build_tfrecord
 
 @click.group()
 def cli():
@@ -9,6 +13,9 @@ def log_odds():
     pass
 
 @log_odds.command()
-@click.argument("input")
-def run(input):
-    print(f"Running log odds on {input}")
+@click.argument("config_path", required=True)
+def build_tfrecord(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    log_odds_build_tfrecord(**config)
+    
