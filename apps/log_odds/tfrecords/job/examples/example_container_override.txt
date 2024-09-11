@@ -1,0 +1,1 @@
+"{\"database\":\"haven\",\"table\":\"example_log_odds_features\",\"partition\":1,\"total_partitions\":2,\"train\":true,\"max_choices\":3,\"features\":[\"size\",\"age\"],\"missing_values_map\":{\"size\":-1,\"age\":-1},\"space\":\"mimic-log-odds\",\"dataset\":\"example-dataset\"}"
