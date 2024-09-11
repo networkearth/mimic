@@ -5,7 +5,9 @@
             "account": "575101084097",
             "region": "us-east-1",
             "space": "mimic-log-odds",
-            "execution_role": "execution-role"
+            "execution_role": "execution-role",
+            "databases": ["haven"],
+            "buckets": ["tfrecords"]
         }
     }
 }
