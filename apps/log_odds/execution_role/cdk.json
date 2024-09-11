@@ -7,7 +7,8 @@
             "space": "mimic-log-odds",
             "execution_role": "execution-role",
             "databases": ["haven"],
-            "buckets": ["tfrecords"]
+            "buckets": ["tfrecords"],
+            "run_batch": true
         }
     }
 }
