@@ -10,6 +10,9 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Input, concatenate
 import numpy as np
+import pandas as pd
+
+import haven.db as db
 
 
 def setup_experiment(config_path, layers_path):
@@ -172,6 +175,12 @@ def pull_training_data(config_path):
         s3.download_file(bucket_name, key, f'test/part{i}-{key.split("/")[-1]}')
 
 
+def build_results(history):
+    results = pd.DataFrame(history.history)
+    results['epoch'] = results.index + 1
+    return results
+
+
 def train_model(config_path):
     with open(config_path, 'r') as fh:
         config = json.load(fh)
@@ -191,7 +200,21 @@ def train_model(config_path):
     model, layers = build_model(max_choices, features, layers)
 
     history = model.fit(train, validation_data=test, epochs=epochs)
-    print(history)
+    results = build_results(history)
+    results['experiment_name'] = config['experiment_name']
+    results['run_id'] = config['run_id']
+
+    os.environ["HAVEN_DATABASE"] = config["database"]
+    db.write_data(results, config["table"], ['experiment_name', 'run_id'])
+
+    model.save('model.keras')
+
+    s3 = boto3.client('s3')
+    bucket_name = "mimic-log-odds-models"
+    key = f"{config['experiment_name']}/{config['run_id']}/model.keras"
+    s3.upload_file('model.keras', bucket_name, key)
+
+
 
 
 

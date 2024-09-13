@@ -4,6 +4,8 @@
     "dataset": "example-dataset",
     "max_choices": 3,
     "features": ["size", "age"],
+    "database": "haven",
+    "table": "mimic_log_odds_results",
     "models": [
         {
             "batch_size": 100,

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-mimic log-odds run-train-model test-experiment 4272ee5cdcc0cef84ae3c68bf6416c01c400d4dae67100c8c8adaeddb597ccf3
+mimic log-odds run-train-model test-experiment 07c49bc09b5b47fca0fbcd0aba35f414ce6a129a12ee7f0310df016f084cda7f
