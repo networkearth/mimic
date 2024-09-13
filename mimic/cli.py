@@ -1,6 +1,7 @@
 import json
 
 import click
+import boto3
 
 from mimic.log_odds.build_tfrecord import build_tfrecord as log_odds_build_tfrecord
 from mimic.log_odds.build_model import (
@@ -38,6 +39,16 @@ def build_tfrecord(config_path):
 @click.argument("layers_path", required=True)
 def run_experiment(config_path, layers_path):
     setup_experiment(config_path, layers_path)
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    experiment_name = config["experiment_name"]
+    client = boto3.client("lambda")
+    client.invoke(
+        FunctionName="mimic-log-odds-run-experiment",
+        InvocationType="Event",
+        Payload=json.dumps({"experiment_name": experiment_name}),
+    )
 
 @log_odds.command()
 @click.argument("experiment_name", required=True)

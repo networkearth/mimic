@@ -8,7 +8,8 @@
             "lambda_name": "run-experiment",
             "bucket_name": "lambda",
             "memory_size": "128",
-            "execution_role": "execution-role"
+            "execution_role": "execution-role",
+            "timeout": 60
         }
     }
 }
