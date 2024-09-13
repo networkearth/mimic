@@ -1,0 +1,17 @@
+{
+    "experiment_name": "test-experiment",
+    "space": "mimic-log-odds",
+    "dataset": "example-dataset",
+    "models": [
+        {
+            "batch_size": 100,
+            "epochs": 10,
+            "layers": ["D16", "D32", "D16"]
+        },
+        {
+            "batch_size": 100,
+            "epochs": 10,
+            "layers": ["D16", "D32", "D16", "D8"]
+        }
+    ]
+}

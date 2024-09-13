@@ -11,6 +11,5 @@
             "region": "us-east-1",
             "execution_role": "execution-role"
         }
-        
     }
 }

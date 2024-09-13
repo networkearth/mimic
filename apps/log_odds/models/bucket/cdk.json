@@ -1,0 +1,11 @@
+{
+    "app": "watercycle synth bucket",
+    "context": {
+        "config": {
+            "account": "575101084097",
+            "region": "us-east-1",
+            "space": "mimic-log-odds",
+            "bucket_name": "models"
+        }
+    }
+}
