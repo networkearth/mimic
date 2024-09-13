@@ -10,7 +10,7 @@ from mimic.log_odds.build_model import (
     pull_training_data,
     train_model,
 )
-from mimic.log_odds.batch_infer import run_inference
+from mimic.log_odds.batch_infer import run_inference, clear_data
 
 @click.group()
 def cli():
@@ -34,6 +34,18 @@ def build_tfrecord(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
     log_odds_build_tfrecord(**config)
+
+@log_odds.command()
+@click.argument("config_path", required=True)
+def build_dataset(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    client = boto3.client("lambda")
+    client.invoke(
+        FunctionName="mimic-log-odds-build-tfrecords",
+        InvocationType="Event",
+        Payload=json.dumps(config),
+    )
 
 @log_odds.command()
 @click.argument("config_path", required=True)
@@ -65,3 +77,24 @@ def run_batch_infer_partition(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
     run_inference(**config)
+
+@log_odds.command()
+@click.argument("config_path", required=True)
+def run_batch_infer(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    # need to clear because the number of 
+    # partitions may have changed
+    experiment_name = config["experiment_name"]
+    run_id = config["run_id"]
+    database = config["database"]
+    table = config["table"]
+    clear_data(database, table, experiment_name, run_id)
+    
+    client = boto3.client("lambda")
+    client.invoke(
+        FunctionName="mimic-log-odds-batch-infer",
+        InvocationType="Event",
+        Payload=json.dumps(config),
+    )

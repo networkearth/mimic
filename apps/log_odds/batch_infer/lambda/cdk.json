@@ -1,0 +1,15 @@
+{
+    "app": "watercycle synth lambda",
+    "context": {
+        "config": {
+            "account": "575101084097",
+            "region": "us-east-1",
+            "space": "mimic-log-odds",
+            "lambda_name": "batch-infer",
+            "bucket_name": "lambda",
+            "memory_size": "128",
+            "execution_role": "execution-role",
+            "timeout": 60
+        }
+    }
+}

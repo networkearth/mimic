@@ -36,6 +36,10 @@ def infer(model, data, features, max_choices, missing_values_map):
     result = result[~np.isnan(result['_choice'])]
     return result
 
+def clear_data(database, table, experiment_name, run_id):
+    os.environ["HAVEN_DATABASE"] = database
+    db.delete_data(table, [{'experiment_name': experiment_name, 'run_id': run_id}])
+
 def run_inference(
     database, table, partition, total_partitions, 
     train, max_choices, features, missing_values_map, 
@@ -53,6 +57,8 @@ def run_inference(
     results = infer(model, data, features, max_choices, missing_values_map)
     results['experiment_name'] = experiment_name
     results['run_id'] = run_id
+    results['_partition'] = partition
+    results['_train'] = train
 
     os.environ["HAVEN_DATABASE"] = database
-    db.write_data(results, upload_table, ['experiment_name', 'run_id', '_individual'])
+    db.write_data(results, upload_table, ['experiment_name', 'run_id', '_train', '_partition'])
