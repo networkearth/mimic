@@ -3,7 +3,12 @@ import json
 import click
 
 from mimic.log_odds.build_tfrecord import build_tfrecord as log_odds_build_tfrecord
-from mimic.log_odds.build_model import setup_experiment as log_odds_setup_experiment
+from mimic.log_odds.build_model import (
+    setup_experiment,
+    pull_run_config,
+    pull_training_data,
+    train_model,
+)
 
 @click.group()
 def cli():
@@ -32,7 +37,7 @@ def build_tfrecord(config_path):
 @click.argument("config_path", required=True)
 @click.argument("layers_path", required=True)
 def run_experiment(config_path, layers_path):
-    log_odds_setup_experiment(config_path, layers_path)
+    setup_experiment(config_path, layers_path)
 
 @log_odds.command()
 @click.argument("experiment_name", required=True)

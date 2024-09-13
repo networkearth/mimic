@@ -1,7 +1,15 @@
+import os
 import json
 import shutil
+import sys
+from functools import partial
 
 import boto3
+import tensorflow as tf
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Input, concatenate
+import numpy as np
 
 
 def setup_experiment(config_path, layers_path):
@@ -14,9 +22,12 @@ def setup_experiment(config_path, layers_path):
     config_key = "/".join([experiment_name, "config.json"])
     layers_key = "/".join([experiment_name, "layers.py"])
 
+    with open(layers_path, 'r') as fh:
+        layers = fh.read()
+
     s3 = boto3.client('s3')
     s3.put_object(Bucket=bucket_name, Key=config_key, Body=json.dumps(config))
-    s3.put_object(Bucket=bucket_name, Key=layers_key, Body=json.dumps(layers_path))
+    s3.put_object(Bucket=bucket_name, Key=layers_key, Body=layers)
 
 
 # pylint: disable=redefined-builtin
@@ -133,8 +144,10 @@ def pull_training_data(config_path):
 
     bucket_name = "mimic-log-odds-tfrecords"
     dataset = config["dataset"]
+
+    s3 = boto3.client('s3')
     
-    response = client.list_objects_v2(
+    response = s3.list_objects_v2(
         Bucket=bucket_name,
         Prefix=f'{dataset}/train/'
     )
@@ -146,7 +159,7 @@ def pull_training_data(config_path):
         key = content['Key']
         s3.download_file(bucket_name, key, f'train/part{i}-{key.split("/")[-1]}')
 
-    response = client.list_objects_v2(
+    response = s3.list_objects_v2(
         Bucket=bucket_name,
         Prefix=f'{dataset}/test/'
     )
@@ -156,27 +169,26 @@ def pull_training_data(config_path):
     os.mkdir('test')
     for i, content in enumerate(response.get('Contents', [])):
         key = content['Key']
-        s3.download_file(bucket_name, key, f'train/part{i}-{key.split("/")[-1]}')
+        s3.download_file(bucket_name, key, f'test/part{i}-{key.split("/")[-1]}')
 
 
 def train_model(config_path):
     with open(config_path, 'r') as fh:
         config = json.load(fh)
 
-    # this got loaded in from s3
-    # using pull_run_config
+    sys.path.append(os.getcwd())
     from layers import LAYERS 
 
     batch_size = config["model"]["batch_size"]
     epochs = config["model"]["epochs"]
-    max_choices = config["model"]["max_choices"]
-    features = config["model"]["features"]
+    max_choices = config["max_choices"]
+    features = config["features"]
     layers = [LAYERS[layer]() for layer in config["model"]["layers"]]
 
     train = load_data('train', max_choices, features, batch_size=batch_size, shuffle_buffer_size=10000)
     test = load_data('test', max_choices, features, batch_size=batch_size, shuffle_buffer_size=10000)
 
-    model, layers = build_model(N, features, layers)
+    model, layers = build_model(max_choices, features, layers)
 
     history = model.fit(train, validation_data=test, epochs=epochs)
     print(history)
