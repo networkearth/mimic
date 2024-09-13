@@ -12,6 +12,8 @@ import haven.db as db
 def build_dataset(database, table):
     os.environ["HAVEN_DATABASE"] = database
 
+    db.drop_table(table)
+
     good_size, good_age = 10, 20
     bad_size, bad_age = 5, 10
     decisions = list(range(10))
@@ -30,6 +32,8 @@ def build_dataset(database, table):
         for decision in decisions
         for individual in individuals
     ])
+    data = data.reset_index()
+    data = data.rename(columns={"index": "_choice"})
 
     db.write_data(data, table, ["_train"])
 

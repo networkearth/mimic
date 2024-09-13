@@ -10,6 +10,7 @@ from mimic.log_odds.build_model import (
     pull_training_data,
     train_model,
 )
+from mimic.log_odds.batch_infer import run_inference
 
 @click.group()
 def cli():
@@ -57,4 +58,10 @@ def run_train_model(experiment_name, run_id):
     pull_run_config(experiment_name, run_id)
     pull_training_data("config.json")
     train_model("config.json")
-    
+
+@log_odds.command()
+@click.argument("config_path", required=True)
+def run_batch_infer_partition(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    run_inference(**config)
