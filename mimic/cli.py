@@ -33,4 +33,12 @@ def build_tfrecord(config_path):
 @click.argument("layers_path", required=True)
 def run_experiment(config_path, layers_path):
     log_odds_setup_experiment(config_path, layers_path)
+
+@log_odds.command()
+@click.argument("experiment_name", required=True)
+@click.argument("run_id", required=True)
+def run_train_model(experiment_name, run_id):
+    pull_run_config(experiment_name, run_id)
+    pull_training_data("config.json")
+    train_model("config.json")
     
