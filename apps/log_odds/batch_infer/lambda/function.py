@@ -9,8 +9,8 @@ def handler(event, context):
 
     job_queue = "mimic-log-odds-job-queue"
     job_definition = "mimic-log-odds-batch-infer-partition"
-    
-    dataset = event['dataset']
+
+    upload_table = event['upload_table'].replace('_', '-')
     
     base_config = copy(event)
     del base_config['train_partitions']
@@ -25,7 +25,7 @@ def handler(event, context):
 
             command = json.dumps(config).replace(' ', '')
             client.submit_job(
-                jobName=f"{job_definition}-{dataset}-{train}-{partition}",
+                jobName=f"{job_definition}-{upload_table}-{train}-{partition}",
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={

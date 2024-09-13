@@ -83,14 +83,6 @@ def run_batch_infer_partition(config_path):
 def run_batch_infer(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
-
-    # need to clear because the number of 
-    # partitions may have changed
-    experiment_name = config["experiment_name"]
-    run_id = config["run_id"]
-    database = config["database"]
-    table = config["table"]
-    clear_data(database, table, experiment_name, run_id)
     
     client = boto3.client("lambda")
     client.invoke(
