@@ -192,7 +192,7 @@ It's only input is a path to a config that should look like:
 - `run_id`: the run id of the model you want to use.
 - `upload_table`: the name of the table you'll be pushing results to.
 
-The results of the inference will be pushed to the `upload_table` you specified. The table will include the required columns noted in "Building Training Sets" as well as your features and a `probability` column that represents the probability of the choice being selected (as predicted by the model).
+The results of the inference will be pushed to the `upload_table` you specified. The table will include the `_individual`, `_decision`, `_choice`, and `_train` columns noted in "Building Training Sets", a `probability` column that represents the probability of the choice being selected (as predicted by the model), and `experiment_name`, `run_id`, and `_partition` columns.
 
 **BEWARE!** the uploaded data is partitioned by `experiment_name`, `run_id`, `_train`, and `_partition`. This means that a rerun that has a different number of partitions may not overwrite the previous results. 
 
