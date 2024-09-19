@@ -75,7 +75,7 @@ So what format does the `table` need to be in?
 
 Well in addition to your feature columns (which should be normalized at this point), you'll want a few other features:
 
-- `_identifier` (`int`): a unique identifier for each individual making decisions (your training and testing data should not include the same individuals).
+- `_individual` (`int`): a unique identifier for each individual making decisions (your training and testing data should not include the same individuals).
 - `_decision` (`int`): a unique identifier for each decision made by an individual. Partitions will be built on this value. 
 - `_choice` (`int`): a unique identifier for each choice available in a specific decision. 
 - `_selected` (`bool`): a boolean indicating whether the choice was selected by the individual for this decision. 
