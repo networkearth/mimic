@@ -4,12 +4,7 @@
     "partition": 1,
     "total_partitions": 2,
     "train": true,
-    "max_choices": 3,
     "features": ["size", "age"],
-    "missing_values_map": {
-        "size": -1,
-        "age": -1
-    },
     "space": "mimic-log-odds",
     "experiment_name": "test-experiment",
     "run_id": "07c49bc09b5b47fca0fbcd0aba35f414ce6a129a12ee7f0310df016f084cda7f",
