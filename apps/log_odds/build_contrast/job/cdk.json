@@ -1,0 +1,15 @@
+{
+    "app": "watercycle synth job",
+    "context": {
+        "config":{
+            "space": "mimic-log-odds",
+            "job_name": "build-contrast",
+            "memory": "2048",
+            "vcpu": "1",
+            "ephemeral_storage": "21",
+            "account": "575101084097",
+            "region": "us-east-1",
+            "execution_role": "execution-role"
+        }
+    }
+}

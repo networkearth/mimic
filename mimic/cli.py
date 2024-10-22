@@ -11,6 +11,7 @@ from mimic.log_odds.build_model import (
     train_model,
 )
 from mimic.log_odds.batch_infer import run_inference, clear_data
+from mimic.log_odds.build_contrast import build_contrast_func
 
 @click.group()
 def cli():
@@ -87,6 +88,26 @@ def run_batch_infer(config_path):
     client = boto3.client("lambda")
     client.invoke(
         FunctionName="mimic-log-odds-batch-infer",
+        InvocationType="Event",
+        Payload=json.dumps(config),
+    )
+
+@log_odds.command()
+@click.argument("config_path", required=True)
+def build_contrast_partition(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    build_contrast_func(**config)
+
+@log_odds.command()
+@click.argument("config_path", required=True)
+def build_contrast(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    
+    client = boto3.client("lambda")
+    client.invoke(
+        FunctionName="mimic-log-odds-build-contrast",
         InvocationType="Event",
         Payload=json.dumps(config),
     )

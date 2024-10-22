@@ -1,0 +1,12 @@
+{
+    "database": "haven",
+    "source_table": "example_log_odds_features",
+    "partition": 1,
+    "total_partitions": 2,
+    "train": true,
+    "destination_table": "example_log_odds_contrasts",
+    "decisions_per_individual": 2, 
+    "alternatives_per_decision": 2
+}
+
+
