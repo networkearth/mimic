@@ -122,6 +122,13 @@ def build_model(N, features, layers, final_activation="linear"):
     return model, layers
 
 
+def build_export_model(features, layers):
+    input = Input(shape=(len(features),), name=f"input")
+    last_layer = input 
+    for layer in layers:
+        last_layer = layer(last_layer)
+    return Model(inputs=input, outputs=last_layer)
+
 def pull_run_config(experiment_name, run_id):
     bucket_name = "mimic-log-odds-models"
     config_key = f"{experiment_name}/{run_id}/config.json"
@@ -206,6 +213,8 @@ def train_model(config_path):
 
     os.environ["HAVEN_DATABASE"] = config["database"]
     db.write_data(results, config["table"], ['experiment_name', 'run_id'])
+
+    model = build_export_model(features, layers)
 
     model.save('model.keras')
 
