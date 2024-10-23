@@ -167,12 +167,7 @@ It's only input is a path to a config that should look like:
     "table": "example_log_odds_features",
     "train_partitions": 2,
     "test_partitions": 1,
-    "max_choices": 3,
     "features": ["size", "age"],
-    "missing_values_map": {
-        "size": -1,
-        "age": -1
-    },
     "space": "mimic-log-odds",
     "experiment_name": "test-experiment",
     "run_id": "07c49bc09b5b47fca0fbcd0aba35f414ce6a129a12ee7f0310df016f084cda7f",
@@ -184,17 +179,53 @@ It's only input is a path to a config that should look like:
 - `table`: the name of the table you'll be pulling from. (this should have the same format is a table you'd use to build a dataset).
 - `train_partitions`: the number of workers to use to infer on the training set.
 - `test_partitions`: the number of workers to use to infer on the testing set.
-- `max_choices`: the maximum number of choices per decision in the dataset.
 - `features`: the features to include in the dataset.
-- `missing_values_map`: a map of feature names to the value that represents a missing value.
 - `space`: the space the dataset is saved in.
 - `experiment_name`: the name of the experiment.
 - `run_id`: the run id of the model you want to use.
 - `upload_table`: the name of the table you'll be pushing results to.
 
-The results of the inference will be pushed to the `upload_table` you specified. The table will include the `_individual`, `_decision`, `_choice`, and `_train` columns noted in "Building Training Sets", a `probability` column that represents the probability of the choice being selected (as predicted by the model), and `experiment_name`, `run_id`, and `_partition` columns.
+The results of the inference will be pushed to the `upload_table` you specified. The table will include the `_individual`, `_decision`, `_choice`, and `_train` columns noted in "Building Training Sets", a `probability` column that represents the probability of the choice being selected (as predicted by the model), and `experiment_name`, `run_id`, and `_partition` columns. In addition there will also now be a `log_odds` column that represents the log-odds of the choice being selected (as predicted by the model) and an `odds` column that represents the odds of the choice being selected (as predicted by the model).
 
 **BEWARE!** the uploaded data is partitioned by `experiment_name`, `run_id`, `_train`, and `_partition`. This means that a rerun that has a different number of partitions may not overwrite the previous results. 
+
+### 4) Building Contrasts
+
+Sometimes you're `max_choices` leads to some serious class imbalance (lots of zeros). In these cases, you may want to build a contrast set that has a more balanced distribution of classes. 
+
+```bash
+mimic log-odds build-contrast <config_path>
+```
+
+This will build doublets of choices sampled from the old dataset so that 
+each individual and choice is represented evenly. 
+
+The config should look like:
+
+```json
+{
+    "database": "haven",
+    "source_table": "example_log_odds_features",
+    "train_partitions": 2,
+    "test_partitions": 1,
+    "destination_table": "example_log_odds_contrasts",
+    "decisions_per_individual": 2, 
+    "alternatives_per_decision": 2
+}
+```
+
+- `database`: the name of the database you'll be pulling from and pushing to.
+- `source_table`: the name of the table you'll be pulling from (note this should be a features table
+like that required for building a dataset).
+- `train_partitions`: the number of workers to use to build the training set.
+- `test_partitions`: the number of workers to use to build the testing set.
+- `destination_table`: the name of the table you'll be pushing the contrasts to. This table will look exactly
+like the source table but with doubles for each decision and `_old_decision` and `_old_choice` columns that reference back to the source table.
+- `decisions_per_individual`: the number of decisions to sample per individual.
+- `alternatives_per_decision`: the number of alternatives to sample per decision. Note that the 
+total number of new decisions will be `decisions_per_individual * alternatives_per_decision`. 
+
+The resulting table can be used to build a dataset like normal but will be guaranteed to have an even number of selected and unselected choices (as they are all doublets).
 
 ## Components
 

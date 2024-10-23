@@ -1,0 +1,1 @@
+"{\"database\":\"haven\",\"source_table\":\"example_log_odds_features\",\"destination_table\":\"example_log_odds_contrasts\",\"decisions_per_individual\":2,\"alternatives_per_decision\":2,\"train\":true,\"partition\":0,\"total_partitions\":2}"
