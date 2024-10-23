@@ -85,7 +85,7 @@ def build_contrast_func(
 
     os.environ['HAVEN_DATABASE'] = database
     contrast['partition'] = partition
-    db.write_data(contrast, destination_table, ['partition'])
+    db.write_data(contrast, destination_table, ['_train', 'partition'])
 
 
     
