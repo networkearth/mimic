@@ -5,7 +5,7 @@
             "account": "575101084097",
             "region": "us-east-1",
             "space": "mimic-log-odds",
-            "lambda_name": "build-tfrecords",
+            "lambda_name": "build-contrast",
             "bucket_name": "lambda",
             "memory_size": "128",
             "execution_role": "execution-role"

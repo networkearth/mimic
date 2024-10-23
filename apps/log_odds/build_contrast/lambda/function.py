@@ -10,7 +10,7 @@ def handler(event, context):
     job_queue = "mimic-log-odds-job-queue"
     job_definition = "mimic-log-odds-build-contrast"
     
-    dataset = event['dataset']
+    dataset = event['source_table'].replace('_', '-')
     
     base_config = copy(event)
     del base_config['train_partitions']
