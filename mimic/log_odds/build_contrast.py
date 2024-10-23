@@ -39,10 +39,14 @@ def build_alternatives(data, alternatives_per_decision, selections):
     )
     # now we need to filter out the decisions that aren't
     # in the selections
-    return alternatives.merge(
-        selections[['individual', '_decision']],
-        on=['_individual', '_decision'],
-        how='inner'
+    return (
+        selections[['_individual', '_decision']]
+        .drop_duplicates(['_individual', '_decision'])
+        .merge(
+            alternatives,
+            on=['_individual', '_decision'],
+            how='inner'
+        )
     )
 
 def combine(selections, alternatives):
@@ -65,7 +69,7 @@ def combine(selections, alternatives):
     combination = (
         combination
         .reset_index(drop=True).reset_index()
-        .rename(columns={'index': '_choice'})
+        .rename(columns={'index': '_choice', '_choice': '_old_choice'})
     )
     return combination
 

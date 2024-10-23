@@ -1,2 +1,2 @@
-mimic @ git+https://github.com/networkearth/mimic@main
+mimic @ git+https://github.com/networkearth/mimic@bugfix
 haven @ git+https://github.com/networkearth/haven@main
