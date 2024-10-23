@@ -18,7 +18,7 @@ def load_source_data(database, source_table, partition, total_partitions, train)
     os.environ['HAVEN_DATABASE'] = database
     return db.read_data(sql)
 
-def build_selections(data, decisions_per_individual, alternatives_per_decision):
+def build_selections(data, decisions_per_individual):
     selections = data[data['_selected']]
     # we sample with replacement to get the desired number of decisions
     # per individual
@@ -26,8 +26,7 @@ def build_selections(data, decisions_per_individual, alternatives_per_decision):
         selections.groupby('_individual')
         .sample(n=decisions_per_individual, replace=True)
     )
-    # we repeat the selections to get match the number of alternatives
-    return pd.concat([selections] * alternatives_per_decision)
+    return selections
 
 def build_alternatives(data, alternatives_per_decision, selections):
     alternatives = data[~data['_selected']]
@@ -41,7 +40,6 @@ def build_alternatives(data, alternatives_per_decision, selections):
     # in the selections
     return (
         selections[['_individual', '_decision']]
-        .drop_duplicates(['_individual', '_decision'])
         .merge(
             alternatives,
             on=['_individual', '_decision'],
@@ -49,7 +47,9 @@ def build_alternatives(data, alternatives_per_decision, selections):
         )
     )
 
-def combine(selections, alternatives):
+def combine(selections, alternatives, alternatives_per_decision):
+    # we repeat the selections to match the number of alternatives
+    selections = pd.concat([selections] * alternatives_per_decision)
     # we need to add a new _decision label to the alternatives
     # and selections first. We'll do this by sorting the
     # selections and alternatives by individual and decision
@@ -79,9 +79,9 @@ def build_contrast_func(
 ):
     data = load_source_data(database, source_table, partition, total_partitions, train)
 
-    selections = build_selections(data, decisions_per_individual, alternatives_per_decision)
+    selections = build_selections(data, decisions_per_individual)
     alternatives = build_alternatives(data, alternatives_per_decision, selections)
-    contrast = combine(selections, alternatives)
+    contrast = combine(selections, alternatives, alternatives_per_decision)
 
     os.environ['HAVEN_DATABASE'] = database
     contrast['partition'] = partition
