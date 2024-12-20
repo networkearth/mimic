@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Input, concatenate
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import optimizers
 import numpy as np
 import pandas as pd
 
@@ -118,7 +118,11 @@ def build_model(config, N, features, layers, final_activation="linear"):
     output_layer.trainable = False
 
     model = Model(inputs=inputs, outputs=output)
-    optimizer = Adam(**config['model'].get('optimizer_kwargs', {}))
+    optimizer = (
+        optimizers.__dict__[config['model'].get('optimizer', 'Adam')](
+            **config['model'].get('optimizer_kwargs', {})
+        )
+    )
     model.compile(optimizer=optimizer, loss="categorical_crossentropy")
 
     return model, layers
@@ -190,6 +194,16 @@ def build_results(history):
     return results
 
 
+class TrainingEvaluationCallback(tf.keras.callbacks.Callback):
+    def __init__(self, train_data):
+        super().__init__()
+        self.train_data = train_data
+
+    def on_epoch_end(self, epoch, logs=None):
+        train_loss = self.model.evaluate(self.train_data, verbose=0)
+        logs['train_loss'] = train_loss
+
+
 def train_model(config_path):
     with open(config_path, 'r') as fh:
         config = json.load(fh)
@@ -208,7 +222,12 @@ def train_model(config_path):
 
     model, layers = build_model(config, max_choices, features, layers)
 
-    history = model.fit(train, validation_data=test, epochs=epochs)
+    # the normal loss provided is averaged over each batch 
+    # during the epoch as weights are changing. therefore
+    # for a real indication of the loss we'll want this callback
+    train_eval_callback = TrainingEvaluationCallback(train)
+
+    history = model.fit(train, validation_data=test, epochs=epochs, callbacks=[train_eval_callback])
     results = build_results(history)
     results['experiment_name'] = config['experiment_name']
     results['run_id'] = config['run_id']
@@ -224,8 +243,3 @@ def train_model(config_path):
     bucket_name = "mimic-log-odds-models"
     key = f"{config['experiment_name']}/{config['run_id']}/model.keras"
     s3.upload_file('model.keras', bucket_name, key)
-
-
-
-
-
