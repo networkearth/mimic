@@ -9,6 +9,7 @@ import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Input, concatenate
+from tensorflow.keras.optimizers import Adam
 import numpy as np
 import pandas as pd
 
@@ -90,7 +91,7 @@ def load_data(data_dir, N, features, batch_size, shuffle_buffer_size):
     return data
 
 
-def build_model(N, features, layers, final_activation="linear"):
+def build_model(config, N, features, layers, final_activation="linear"):
     """
     Inputs:
     - N: int, number of choices
@@ -117,7 +118,8 @@ def build_model(N, features, layers, final_activation="linear"):
     output_layer.trainable = False
 
     model = Model(inputs=inputs, outputs=output)
-    model.compile(optimizer="adam", loss="categorical_crossentropy")
+    optimizer = Adam(**config['model'].get('optimizer_kwargs', {}))
+    model.compile(optimizer=optimizer, loss="categorical_crossentropy")
 
     return model, layers
 
@@ -204,7 +206,7 @@ def train_model(config_path):
     train = load_data('train', max_choices, features, batch_size=batch_size, shuffle_buffer_size=10000)
     test = load_data('test', max_choices, features, batch_size=batch_size, shuffle_buffer_size=10000)
 
-    model, layers = build_model(max_choices, features, layers)
+    model, layers = build_model(config, max_choices, features, layers)
 
     history = model.fit(train, validation_data=test, epochs=epochs)
     results = build_results(history)
