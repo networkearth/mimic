@@ -104,7 +104,11 @@ The first argument should be the path to a config that looks like:
         {
             "batch_size": 100,
             "epochs": 10,
-            "layers": ["D16", "D32", "D16"]
+            "layers": ["D16", "D32", "D16"],
+            "optimizer": "Adam",
+            "optimizer_kwargs": {
+                "learning_rate": 0.002
+            }
         },
         {
             "batch_size": 100,
@@ -126,6 +130,8 @@ The first argument should be the path to a config that looks like:
     - `batch_size`: the batch size to use for training.
     - `epochs`: the number of epochs to train for.
     - `layers`: a list of layers to use in the model. These refer to the `LAYERS` in the second input to the command. 
+    - `optimizer`: (optional) the name of the optimizer you want to use in `tf.keras.optimizers`. Defaults to `Adam`
+    - `optimizer_kwargs`: (optional) a set of kwargs to pass to the optimizer. 
 
 The second argument should be the path to a file that looks like:
 
