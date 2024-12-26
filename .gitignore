@@ -3,3 +3,12 @@ mimic.egg-info/
 *.pyc
 cdk.out/
 cdk.context.json
+.DS_Store
+*.aux
+*.log
+*.synctex.gz
+*.toc
+*.bbl
+*.bcf
+*.blg
+*.run.xml
