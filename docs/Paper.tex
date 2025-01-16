@@ -57,14 +57,9 @@ Individual-Based Models (IBMs) can be broadly defined as any model which predict
 
 There are many such models in existence today. <INSERT STUDIES>
 
-However it has been pointed out that there are no common tools for building such models \citep{grimm}. That is each of the $F(\vec{v}_{i,j})$ are individually designed and hand crafted by each of the investigators. Machine learning seems to be an excellent candidate for such a tool as it excels in finding functions $F(\vec{v}_{i,j})$ given that $\vec{v}_{i,j}$ and $c_i$ are known. One principle advantage of reducing the effort and time required to build a model would be the opportunity for more exploratory applications of individual based modeling. Specifically instead of having to make careful selections of appropriate information up front (given the effort in building models in the first place) investigators could build models using arbitrary sets of features and then learn the value of those features in making predictions by comparing the outcomes of the various models built using machine learning. 
+However it has been pointed out that there are no common tools for building such models \citep{grimm}. That is each of the $F(\vec{v}_{i,j})$ are individually designed and hand crafted by each of the investigators. Machine learning seems to be an excellent candidate for such a tool as it excels in finding functions $F(\vec{v}_{i,j})$ given that $\vec{v}_{i,j}$ and $c_i$ are known. One principle advantage that the authors forsee in having a tool that reduces the effort and time required to build a model would be the fact that the modeling process itself could be used as means to explore the data as opposed to simply a means of making predictions. When designing, building, and testing a model takes a great deal of time one must turn to other methods to explore how the features may affect the choices made. But if the modeling and evaluation are instead on the order of minutes or hours the model tool itself can be used to directly explore the data. This is especially helpful in the context of behaviors as the relationships between features and the choices made have the potential to be highly nonlinear, interconnected, and conditional. I.e., the kind of relationships that are difficult or impossible to discern without building a model in the first place.
 
-The purpose of this paper then is to:
-
-\begin{enumerate}
-\item Present a guide as to one way in which to apply machine learning to individual based modeling where $\vec{v}_{i,j}$ and $c_i$ are available that is cost and computationally effective
-\item Demonstrate the potential value of exploratory model building using an example application to Chinook salmon tagging data
-\end{enumerate} 
+The purpose of this paper is therefore to provide a guide on one strategy for applying machine learning to these kinds of behavioral data and then illustrate, using an application to Chinook salmon tagging data, how the models and their artifacts can be used to do data exploration. 
 
 \section*{Guide}
 
