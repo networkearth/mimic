@@ -53,25 +53,34 @@ This study explores using deep learning to build Individual-Based Models (IBMs).
 
 \section*{Introduction}
 
-Individual-Based Models (IBMs) can be broadly defined as any model which predicts or mimics the behavior of individual organisms. This is in contrast to other models that attempt to predict or mimic behaviors at a community level or higher. Some IBMs are crafted using only community or higher level data - in other words individuals are not discernible from the dataset. This paper is not concerned with those cases but instead with cases where data capturing individual decisions are available. Specifically cases in which we have a series of decisions $d_i$ composed of choices $c_{i,j}$ for which we know which choice was selected $c_i$ and have some information $\vec{v}_{i,j}$ on each of the choices and the individual at that time. <THIS COULD BE> In such a situation we can abstract our model as a function $F(\vec{v}_{i,j})$ that predicts a likelihood of selecting choice $c_{i,j}$. If our model predicts 1 for some choice and 0 for all others for each decision $d_i$ we say the model is deterministic otherwise it is probabilistic. 
+Modeling organism behavior can be thought of as equivalent to modeling choices and selections. For example if modeling animal movement, we can imagine each timestep as a decision $d_i$ where the animal is selecting from a series of grid cells in its vicinity. Each such grid cell would represent a choice $c_{i,j}$. For each of these cells we may have a series of features $\vec{v}_{i,j}$ such as environmental covariates, descriptors such as distance or direction from the animal, and/or features of the animal itself or its state. Then we could pose our model as the function $F(\vec{v}_{i,j})$ which gives the probability of selecting $c_{i,j}$ given the information at hand. That is, we model the animal's behavior as a discrete Markov process. 
 
-There are many such models in existence today. <INSERT STUDIES>
+The fact that this process produces probabilities per choice as opposed to explicit predictions of behavior is advantageous for two reasons:
 
-However it has been pointed out that there are no common tools for building such models \citep{grimm}. That is each of the $F(\vec{v}_{i,j})$ are individually designed and hand crafted by each of the investigators. Machine learning seems to be an excellent candidate for such a tool as it excels in finding functions $F(\vec{v}_{i,j})$ given that $\vec{v}_{i,j}$ and $c_i$ are known. One principle advantage that the authors forsee in having a tool that reduces the effort and time required to build a model would be the fact that the modeling process itself could be used as means to explore the data as opposed to simply a means of making predictions. When designing, building, and testing a model takes a great deal of time one must turn to other methods to explore how the features may affect the choices made. But if the modeling and evaluation are instead on the order of minutes or hours the model tool itself can be used to directly explore the data. This is especially helpful in the context of behaviors as the relationships between features and the choices made have the potential to be highly nonlinear, interconnected, and conditional. I.e., the kind of relationships that are difficult or impossible to discern without building a model in the first place.
+\begin{enumerate}
+\item With a deterministic model that predicts a specific trajectory you require a high level of $\vec{v}_{i,j}$ to use the model beyond a small number of steps as errors can accumulate. Here because we are predicting probabilities across all trajectories we can see what $\vec{v}_{i,j}$ elucidates and what it doesn't.
+\item Because a specific likelihood is provided for each choice and trajectory we can identify specific decisions, individual organisms, places, or periods of time in which the model gives low likelihoods relative to the rest of the data making the model a tool for exploratory data analysis as well.
+\end{enumerate}
 
-The purpose of this paper is therefore to provide a guide on one strategy for applying machine learning to these kinds of behavioral data and then illustrate, using an application to Chinook salmon tagging data, how the models and their artifacts can be used to do data exploration. 
+The fact that we have posed it in terms of distinct choices means that this is precisely a probabilistic machine learning problem \citep{durr} meaning that we can take advantage of machine learning to learn $F(\vec{v}_{i,j})$. This carries with it a few advantages as well. 
 
-\section*{Guide}
+\begin{enumerate}
+\item Machine learning models, especially deep learning models, allow for very flexible pattern matching.
+\item Rather than having to rebuild a model for each addition or subtraction to $\vec{v}_{i,j}$ we can reuse the same tool set to build and validate models regardless of $\vec{v}_{i,j}$. 
+\end{enumerate}
 
-\subsection*{Framing}
+This combination presents a kind of virtuous cycle in that the modeling process can be used to provide the very exploratory data analysis that can point to improvements in the model itself thus allowing model development to supercharge itself. 
 
-The methodology centers on a two-stage cycle of discovery: (1) testing hypotheses about covariates that are believed to predict behaviors and (2) using the results to generate new hypotheses.
+There is significant precedent here as Hidden Markov Models (HMMs) and machine learning have both seen extensive use in movement modeling \citep{mlmovement1}. However while each of these in turn bring some of the advantages outlined above they do not typically combine them. 
 
-In the first stage, we model behaviors as decisions made from a set of choices, each associated with hypothesized covariates. Then, using deep learning, we build a predictive model to evaluate the likelihood of these selections based on the covariates.
+Hidden Markov Models, by definition, do provide a conditioned probability distribution but the examples from the literature require explicit assumptions about how the data and behavior interact and therefore aren't able to take advantage of the flexibility and automation provided by machine learning \citep{mlmovement1}. Therefore they provide they can technically provide the first set of advantages but not the second. 
 
-In the second stage, we evaluate how the model shifts the likelihood of specific individuals or decision groups relative to baseline models. Improved performance reveals where the covariates more effectively predict behavior, while underperformance indicates missing covariates. This focus on areas of "greatest possible effect" provides case studies for generating new hypotheses, enabling iterative refinement of the process.
+The applications of machine learning in the space do the opposite. They allow for the flexible and automated training of models, but those models typically make explicit predictions on movement, such as regressions on step length and angle thereby providing the latter set of advantages but not the former \citep{mlmovement1}\citep{mlmovement2}\citep{mlmovement3}.  
 
-The keystone of this entire process is having a clear, quick means of producing deep learning models from our framing of decisions, choices, and covariates, an issue which we turn to next. 
+
+The aim of this paper is to provide a guide on how to use probabilistic machine learning to model animal behavior as well as an example application to movement data in order to demonstrate ways in which the methodology can be used as an exploratory data analysis tool as well. 
+
+\section*{Applying Probabilistic Machine Learning to Behavior}
 
 \subsection*{Theory}
 
@@ -83,7 +92,14 @@ This growth poses a significant challenge due to the "curse of dimensionality", 
 
 \subsection*{Log-Odds Modeling}
 
-To address this issue, we propose an alternative framing. Instead of predicting the probabilities directly, we predict the log-odds $\phi_m$ for each choice and calculate the probability $p_m$ using the softmax function:
+To address this issue we could take advantage of the order invariance of choices in the traditional probabilistic problem framing. Specifically, the order in which choices are presented to the model should not matter. For instance, whether a particular choice appears in the first or the thirteenth position should have no impact on the model's operation. This property allows for data augmentation by reordering choices.
+
+In essence, for each training example, $M!$ (factorial of the number of choices) augmented examples can be created.
+
+The issue with this approach is that as your augmented data size grows to match the needs of the greater dimensionality, so too does the time required for training. So while the problem remains theoretically possible, the potential exponential uptick in time complexity poses a significant practical issue. 
+
+
+Instead we propose an adjustment to the standard framing of probabilistic machine learning. Instead of predicting the probabilities directly, we predict the log-odds $\phi_m$ for each choice and calculate the probability $p_m$ using the softmax function:
 
 $$p_m = \frac{e^{\phi_m}}{\sum_{m=1}^{M}e^{\phi_m}}$$
 
@@ -93,23 +109,13 @@ We can implement this log-odds model using standard probabilistic deep learning 
 
 \subsection*{Contrast Sampling}
 
-As $M$ grows large, a practical issue arises: for each training example, most instances of the internal log-odds model would ideally report very low log-odds, resulting in low probabilities. Ideally, only one choice should produce $p_m=1$. This is analogous to a class imbalance problem, where the model becomes prone to predicting the most common class.
+A practical issue with our log-odds framing is that as $M$ grows large most instances of the internal log-odds model would ideally report very low log-odds, resulting in low probabilities. Ideally, only one choice should produce $p_m=1$. This is analogous to a class imbalance problem, where the model becomes prone to predicting the most common class.
 
 To address this, we balance the training data. Instead of presenting the model with full decisions containing all $M$ choices, we create training pairs, or contrasts, where each pair consists of one selected choice and one unselected choice. This approach is valid because the log-odds model focuses on the relative likelihood of choices, making the number of choices considered at any one time irrelevant.
 
 The primary risk in using contrasts is introducing bias by disproportionately sampling certain combinations of choices. To mitigate this, we randomly sample pairs from each decision, ensure an equal number of contrasts per decision, and an equal number of decisions per individual. This preserves the balance across the training data and avoids skewing the model's predictions.
 
-\subsection*{Alternative Approaches to Reducing Dimensionality}
-There are other strategies for reducing the dimensionality of one's data. One straightforward method is to limit the choices available. For instance if making decisions among a set of directions, one could reduce the precision of the angles allowed. While this approach reduces the model's specificity, it significantly simplifies the dimensionality of the problem.
-
-The methodology proposed here, however, achieves dimensionality reduction without sacrificing specificity. That said, there are scenarios where some choices are unlikely to be relevant. In such cases, dimensions corresponding to these irrelevant choices can simply be discarded, further simplifying the model.
-
-Another effective strategy to enhance the data set is leveraging the order invariance of choices in the traditional probabilistic problem framing. Specifically, the order in which choices are presented to the model should not matter. For instance, whether a particular choice appears in the first or the thirteenth position should have no impact on the model's operation. This property allows for data augmentation by reordering choices.
-
-In essence, for each training example, $M!$ (factorial of the number of choices) augmented examples can be created.
-
-The issue with this approach is that as your augmented data size grows to match the needs of the greater dimensionality, so too does the time required for training. So while the problem remains theoretically possible, the potential exponential uptick in time complexity poses a significant practical issue. The proposed approach does not suffer from this issue and remains linear in time with the amount of data provided. 
-\section*{Application}
+\section*{Application to Chinook Salmon Movement Data}
 
 \subsection*{Outline}
 
