@@ -69,7 +69,7 @@ The fact that we have posed it in terms of distinct choices means that this is p
 \item Rather than having to rebuild a model for each addition or subtraction to $\vec{v}_{i,j}$ we can reuse the same tool set to build and validate models regardless of $\vec{v}_{i,j}$. 
 \end{enumerate}
 
-This combination presents a kind of virtuous cycle in that the modeling process can be used to provide the very exploratory data analysis that can point to improvements in the model itself thus allowing model development to supercharge itself. 
+This combination presents a kind of virtuous cycle in that the modeling process can be used to provide the very exploratory data analysis that can point to improvements in the model itself, and then whatever new features are derived can be incorporated into the model using the same tooling as before, thus allowing model development to supercharge itself. 
 
 There is significant precedent here as Hidden Markov Models (HMMs) and machine learning have both seen extensive use in movement modeling \citep{mlmovement1}. However while each of these in turn bring some of the advantages outlined above they do not typically combine them. 
 
@@ -77,8 +77,19 @@ Hidden Markov Models, by definition, do provide a conditioned probability distri
 
 The applications of machine learning in the space do the opposite. They allow for the flexible and automated training of models, but those models typically make explicit predictions on movement, such as regressions on step length and angle thereby providing the latter set of advantages but not the former \citep{mlmovement1}\citep{mlmovement2}\citep{mlmovement3}.  
 
+Only with the two together can you...
 
-The aim of this paper is to provide a guide on how to use probabilistic machine learning to model animal behavior as well as an example application to movement data in order to demonstrate ways in which the methodology can be used as an exploratory data analysis tool as well. 
+Moreover with this more abstract and less explicit framing the applications are far broader...
+
+
+With this in mind this paper has two goals:
+
+\begin{enumerate}
+\item To provide a guide to using probabilistic deep learning to model animal behavior that demonstrates how to overcome some of the practical issues that arise in its application
+\item To demonstrate, through an illustrative example, how the artifacts of these models can be used as tools for EDA and thereby drive a virtuous model development cycle.
+\end{enumerate} 
+
+In order to further reduce the barrier to taking advantage of these techniques, the authors have provided a codebase at https://github.com/networkearth/mimic with all of the tooling required to setup probabilistic modeling in the cloud. 
 
 \section*{Applying Probabilistic Machine Learning to Behavior}
 
@@ -115,55 +126,93 @@ To address this, we balance the training data. Instead of presenting the model w
 
 The primary risk in using contrasts is introducing bias by disproportionately sampling certain combinations of choices. To mitigate this, we randomly sample pairs from each decision, ensure an equal number of contrasts per decision, and an equal number of decisions per individual. This preserves the balance across the training data and avoids skewing the model's predictions.
 
+\subsection*{Taking Advantage of the Cloud}
+
+In deep learning the specific layer sizes, depth, optimizer, learning rate, and other parameters best suited to a particular problem are not usually known from the start. Therefore it is important to do hyperparameter tuning in order to discover the best parameters for a particular problem. Practically this means training large numbers of models - a process that is usually very compute intensive. Even with just 3 parameters each of which can take on five results in 125 distinct models. Furthermore as with any search over a non-convex space (as backpropogation is) the initial seed can have impacts on the final solution. Therefore, training deep learning models requires training many models per problem.
+
+This issue can be overcome by virtue of the fact that these models can all be trained independently and therefore in parallel. This is a perfect use case for cloud compute where one can spin up, for a short time and for a reasonable cost, a large number of machines and therefore do all of the hyperparameter tuning in parallel. 
+
+\subsection*{Summary}
+
+In summary the application of probabilistic modeling proposed here follows three steps:
+
+\begin{enumerate}
+\item Discretize the behaviors into distinct decisions $d_i$ and choices $c_i,j$. 
+\item Resample the choices using contrast sampling
+\item Apply log-odds modeling to the contrasts, taking advantage of cloud compute to efficiently search the hyperparameter space
+\item Use the trained model to make inferences on the original decisions
+\end{enumerate}
+
+The following example application demonstrates these steps in practice. 
+
 \section*{Application to Chinook Salmon Movement Data}
 
 \subsection*{Outline}
 
-We illustrate this technique using an example path of inquiry, over Chinook movement data, that reflects the selections and considerations involved in behavioral modeling.
+This example will involve building three models of Chinook salmon (\textit{Oncorhynchus tshawytscha}) movement that build upon one another. These specific models were chosen to illustrate the capabilities of this technique as an exploratory data analysis (EDA) tool. The features are described in the following table: 
 
-In our initial exploratory data analysis we may notice two patterns of movement illustrated by figure \ref{fig:exemplars}. Specifically, we notice that there are individuals who seem to "randomly walk" about their region and other individuals who move with reasonably clear direction. From this we may wonder whether to what extent these patterns can be explained using covariates related to productivity. 
+\begin{center}
+\begin{tabular}{| c | c  | } 
+\hline 
+Model & Features \\
+\hline
+Distance Model & distance to choice \\
+Heading Model & + heading to choice \\
+Food Model & + primary productivity, mixed layer thickness \\
+\hline
+\end{tabular}
+\end{center}
 
-\begin{figure}[h!] 
-	\centering
-  \includegraphics[height=40mm]{figures/exemplars.png}
-  \caption{Movements of two sample Chinook salmon off the coast of the Aleutian Islands chain. The individual on the left demonstrates far more directed movement than the individual on the right.}
-  \label{fig:exemplars}
-\end{figure}
+and their purposes (in terms of EDA) are described here:
 
-\FloatBarrier
+\begin{center}
+\begin{tabular}{| c | c  | } 
+\hline 
+Model & Purpose \\
+\hline
+Distance Model & A null model for comparison \\
+Heading Model & Look at heading tendencies in the data \\
+Food Model & Explore deviations from averages due to productivity \\
+\hline
+\end{tabular}
+\end{center} 
 
-To proceed with this investigation we must first build a null model to use as a basis for comparison, then build a model that can pick up on any latent directionality across our dataset, and finally a model that will allow us to investigate the degree to which productivity can help explain the deviations from this latent directionality. Our log-odds modeling framework will give us both the tools required to build the model efficiently as well as inspect the details of each new covariate's impact.
+We will begin by describing the data and associated features, then move onto a description of the building of the models, and finally, in the results and discussion, illustrate how the models can be used to explore the data. 
 
+\subsection*{Data and Features}
 
-\subsection*{Data}
+The data used is a series of tracks from 111 Chinook salmon (\textit{Oncorhynchus tshawytscha}) caught and monitored between 2013 and 2022 \citep{tags1} \citep{tags2}. These tracks were obtained from pop-up satellite archival tags which collect temperature, light level, and depth information at specified (sub day) intervals. This data is then passed through a proprietary algorithm from Wildlife Computers to determine likely longitude and latitude during each day of of monitoring \citep{PSAT}. \newline
 
-To demonstrate this methodology in practice, we consider a series of tracks from 111 Chinook salmon (\textit{Oncorhynchus tshawytscha}) caught and monitored between 2013 and 2022 \citep{tags1} \citep{tags2}. These tracks were obtained from pop-up satellite archival tags which collect temperature, light level, and depth information at specified (sub day) intervals. This data is then passed through a proprietary algorithm from Wildlife Computers to determine likely longitude and latitude during each day of of monitoring \citep{PSAT}. \newline
-
-Environmental data was derived from the Global Ocean Biogeochemistry Hindcast dataset (10.48670/moi-00019) and the Global Ocean Physics Reanalysis (10.48670/moi-00021) from the E.U. Copernicus Marine Service Information. Net primary production (mg/m3/day) and mixed layer thickness (m) were aggregated per Uber h3 resolution 4 cell in the Northern Pacific. 
-
-\subsection*{Formulation}
-
-The resolution 4 Uber h3 cell containing each salmon location was identified and then, assuming a maximum travel distance of 100km (centeroid to centeroid) all adjacent cells within the 100km were identified as choices (including the currently occupied cell). In general this represented $\sim 19$ choices per decision with the intention being to predict the probability of moving to any particular cell. Training data was derived by identifying the actual cell moved to. 
-
-\subsection*{Features} 
+Environmental data was derived from the Global Ocean Biogeochemistry Hindcast dataset (10.48670/moi-00019) and the Global Ocean Physics Reanalysis (10.48670/moi-00021) from the E.U. Copernicus Marine Service Information. Net primary production (mg/m3/day) and mixed layer thickness (m) were aggregated per Uber h3 resolution 4 cell in the Northern Pacific. \newline
 
 Movement heading in radians and distance to the centroid of the choice cell were computed and then mixed layer thickness and net primary production were joined to the choices on cell and day.
 
 Distance was normalized to a range of 0-1 by division by 100, while mixed layer thickness and net primary production were both log-scaled and then centered at zero. 
 
-\subsection*{Contrast Sampling}
+\subsection*{Building the Models}
 
-After inspecting the distribution of number of choices per salmon and number of choices per decision, we decided on random sampling (with replacement) 200 decisions per individual and 19 choices per decision. 
+\subsubsection*{Train and Validation Sets} 
+
+The first step in any other machine learning problem is splitting training and validation sets. Given the low number of individuals in the sample and the intention to demonstrate the technique's value as an EDA tool it was decided to not maintain a hold out test set.
+
+71 individuals were randomly selected for training and 40 for validation.
+
+\subsubsection*{Formulation}
+
+The next step in building a log-odds model is to decide on the formulation of our choices. In our case we decided to grid space by Uber h3 cells at resolution 4. Specifically, the cell containing each salmon location from our data was identified and then, assuming a maximum travel distance of 100km (centeroid to centeroid) all adjacent cells within the 100km were identified as choices (including the currently occupied cell). In general this represented $\sim 19$ choices per decision with the intention being to predict the probability of moving to any particular cell. Training data was derived by identifying the actual cell moved to. 
+
+\subsubsection*{Contrast Sampling}
+
+The next step in building a log-odds model is determining the specifics of the contrast sampling. For this example, after inspecting the distribution of number of choices per salmon and number of choices per decision, we decided on random sampling (with replacement) 200 decisions per individual and 19 choices per decision. 
 
 Over a validation/training split of 40, 71 this resulted in 421,800 contrasts of which 269,800 were used in training and the rest in validation. 
 
-Note that only 14,200 training examples would've been available to a traditional probabilistic approach representing a large increase in the number of available training examples.   
+Note that only 14,200 training examples would've been available to a traditional probabilistic approach representing a large increase in the number of available training examples. 
 
-\subsection*{Training}
 
-Three sets models were trained, one including only distance, one with both distance and movement heading, and one with all four features. Note that while the feature dimensions of these models are 1, 2, and 4 respectively, given the maximum number of choices per decision seen was 33, the dimensionality of a standard probabilistic model would've been 33, 66, and 132 representing a large reduction in the dimensionality of our feature spaces. 
+\subsection*{Training and Model Selection}
 
-Architectures/hyperparameters for the log-odds component of the model were parametrized in the following ways:
+For each of the three models trained architectures/hyperparameters for the internal log-odds component of the model were parametrized in the following ways:
 
 \begin{center}
 \begin{tabular}{| c | c |} 
@@ -178,17 +227,15 @@ Learning Rate & 0.0005 \\
 \end{tabular}
 \end{center}
 
-With 5 models trained for each combination. Models were trained in Keras using an Adam optimizer for 100 epochs. 
+5 separate seeds were used for each combination. Models were trained in Keras using an Adam optimizer for 100 epochs. Training was done on AWS Batch using Fargate instances of 2 vcpu's and 4 GB of memory. By taking advantage of AWS Batch,  models could be all trained in parallel allowing for short (~1 hour) turn around times. 
 
-Models for each set of features we selected on the basis of the loss over the validation set of contrasts. 
+Lowest loss (categorical cross entropy) at the end of the 100 epochs over the validation dataset was used to select the best set of parameters for each of the three models trained.
 
-\subsection*{Compute}
 
-Models were trained using AWS Batch using Fargate instances of 2 vcpu's and 4 GB of memory. By taking advantage of AWS Batch,  models could be all trained in parallel allowing for short (15-30 minute) turn around times. 
 
 \section*{Results}
 
-In training the metric of interest is the contrasts' normalized log probability (C-NLP) - the average log probability per contrast. For an equivalent metric over all of the decisions we also computed the average log probability per decision for each individual and then computed an average over those across individuals (in order to not favor individuals with many decisions). This is the D-NLP reported in the table below. 
+The loss, categorical cross entropy, is equivalent to the average (normalized) log probability per contrast. For an equivalent metric over the actual decisions made by the individuals we computed the average log probability per decision for each individual and then computed an average over those across individuals (in order to not favor individuals with many decisions). This is the D-NLP reported in the table below. 
 
 \begin{center}
 \begin{tabular}{| c | c | c | c | c |}
@@ -196,14 +243,14 @@ In training the metric of interest is the contrasts' normalized log probability 
 Model & Train C-NLP & Val C-NLP & Train D-NLP & Val D-NLP \\
 \hline
 No Model & -0.693 & -0.693 & -2.944 & -2.944 \\
-Model 1 & -0.172 & -0.154 & -1.336 & -1.223 \\
-Model 2 & -0.156 & -0.150 & -1.281 & -1.200 \\
-Model 3 & -0.147 & -0.146 & -1.248 & -1.180 \\
+Distance & -0.172 & -0.154 & -1.336 & -1.223 \\
+Heading & -0.156 & -0.150 & -1.281 & -1.200 \\
+Food & -0.147 & -0.146 & -1.248 & -1.180 \\
 \hline
 \end{tabular}
 \end{center}
 
-"No Model" assumes all decisions are equally likely, Model 1 is the distance only model, Model 2 adds the movement heading, and Model 3 adds the net productivity and mixed layer thickness features. \newline
+"No Model" assumes all decisions are equally likely, "Distance" is the distance only model, "Heading" adds the movement heading, and "Food" adds the net productivity and mixed layer thickness features. \newline
 
 \begin{figure}[h!] 
 	\centering
@@ -252,47 +299,51 @@ Up to 50km & 32.5\% & 1567 \\
 
 \section*{Discussion}
 
-\subsection*{Model One: Distance as a Key Feature}
-Given the observations that most decisions involve an individual staying put (within its h3 cell) and rarely do fish travel to an h3 cell further than 50km away, it was decided that a more reasonable baseline model than even odds would be one that included distance traveled as a feature (model 1). 
+\subsection*{The Distance Model}
 
-As expected model 1 resulted in a significant improvement in log-likelihood across all individuals in the validation set as compared to a model that gives even odds to each available choice. This model therefore provides the baseline for our subsequent models. 
 
-\subsection*{Model Two: Movement Heading}
-Beyond this underlying distance feature, the interest is in predicting, when fish move, where they will move. Of particular interest was the individuals in the sitka and yakutat groups as these groups had several individuals exhibiting what appeared to be very directed and extensive movement. 
+In any probabilistic classification problem model performance has to be evaluated against some kind of "null" baseline. For example in our case, given there are normally 19 choices available in each decision any model must be able to produce likelihoods of selecting the correct choice greater than $1/19\approx 0.05$ on average. Anything below this and a purely random guess is better. 
 
-Upon studying these individuals it was noted that changes in mixed layer thickness seemed to incite movement and the individuals tended to stay (anecdotally) near higher primary productivity. Therefore a model with net primary productivity and mixed layer thickness was of interest. 
+In our example however a random guesser can be smarter than this without having any information on the environment or organisms in question because there are simple descriptive features that can be derived from the formulation alone. I.e., someone with just those statistics could become an "informed random guesser". In this analysis we look at two of them - distance and movement heading. 
 
-However, before moving to this model we wanted a baseline model that included movement heading as a feature so that we could determine what aspects of the movement were predicted simply by common headings as opposed to movement specifically related to productivity. Model 2 is this distance plus movement heading model. 
+The first, distance, provides a significant drop in our loss from -2.944 in the no model case to -1.223 in the distance model. We can also plot the change in the log likelihood per individual track (figure X) and see that adding distance to the model represents an improvement across every single individual considered. Our random guesser is very usefully informed by the distance associated with each choice and so our "null model" should include this feature. 
 
-Looking at figure \ref{fig:ll_increase} we can see that for several individuals in the yakutat group adding movement heading increased the log likelihood meaningfully as compared to model 1 (our baseline). 
-Indeed figure \ref{fig:ll_increase_movement} indicates that most of this increase comes from decisions where the individuals moved. Looking at figure \ref{fig:yakutat_map} it is clear that the move from model 1 to model 2 is creating a model that's learning a heading south east is more likely than alternative directions with the movements of fish in north or westerly directions actually reducing in log likelihood as compared to the baseline. 
+\subsection*{The Heading Model}
 
-This southeasterly pattern is maintained throughout figures \ref{fig:chignik_map}-\ref{fig:yakutat_map} and indeed looking at \ref{fig:ll_increase_movement} there are several groups where the majority of individuals suffer a decrease in log likelihood, in all likelihood due to this common direction not being representative of them.  
+Next we turn to the model that includes the movement heading per decision as well. Here we also see a shift in the loss but of far lesser magnitude than in going from the no model case to the distance model. Specifically we go from a validation loss of -1.223 to -1.200. While this is useful, far more informative is a comparison plot that shows us the shift in log likelihood per individual track when going from the distance model to the movement heading model (figure X). Unlike the latter figure this one restricts itself to choices where movement occurred. This is our first example of the usefulness of these models in doing EDA as this plot is effectively showing us, per individual, the alignment with average tendencies of movement in the data. 
 
-The sitka group however does see an improvement as well showing that both of these majority south eastern movement groups (sitka and yakutat) can be at least partially explained by a common heading down the coast. 
 
-\subsection*{Model Three: Environmental Features}
-With this naive heading baseline in place we can now investigate the extent to which adding in net primary productivity and mixed layer thickness allows our model to distinguish when different headings are taken by different fish, or in fact reinforce the headings already "selected". 
+The individuals with marked positive increases represent individuals well aligned to the movement heading tendencies in the data whereas those quite negatively aligned show a contrary pattern. Using this we can then plot the movements themselves for these "exemplar" individuals colored by their changes in likelihood compared to the distance model (blue is positive, red is negative) to see what those general tendencies in the data are (figure X). From this it is clear that the model is learning a south westerly pattern as being the best direction to randomly guess. 
 
-Looking at the step from model 2 to model 3 in figures \ref{fig:chignik_map}-\ref{fig:yakutat_map} we see now that several of the movements that saw a drop in log likelihood as compared to the model 1 baseline are actually seeing a rise in log-likelihood under this new model indicating that the new features are allowing us to swing the preferred movement heading in a way that is conditioned on the environment. 
+This is all incredibly useful to the model builder as we are now in possession of exemplars who need little explanation beyond these basic descriptive features as well as specific exemplars that act contrary to the "norm". These individuals can now be studied more extensively to look for discriminating patterns we can use to further improve the model.  
 
-In addition, especially in the sitka group, we see reinforcement/refinement of the decisions as there is an increase in log likelihood up and beyond what was received from model 2. That is to say that while there is a general tendency in the south easterly direction, the specific cells chosen are in some way correlated to productivity. 
+\subsection*{The Food Model}
 
-Noteable as well is the fact that the move from model 2 to model 3 had a significant positive impact on the predictability of the decisions from the nanwalek group, much more so than in the step from model 1 to model 2. The kodiak group however remains largely unaffected. 
+The examples in yakutat presented an especially interesting example in that the exhibit "low likelihood" behavior at the beginning of their tracks and then switch to higher likelihood behaviors (according to the heading model) later on as they then proceed to move down the coast. This gave the authors a very specific shift to watch and observe for patterns and one pattern seemed to be that when the mixed layer thickness began to shrink the fish began to move south. To see more clearly how these features might interact with the ones already given mixed layer thickness and primary productivity were added and comparisons as before were done (figure X). 
 
-\subsection*{Further Questions}
+First, the addition of these features did make consistent improvements across individuals' movement choices in the yakutat and sitka groups and much of this improvement was on the tracks south. However these same groups all saw a decline in the likelihood of decisions that resulted in no movement - something that would certainly be worth additional investigation. For unalaska the opposite pattern is seen - decisions that resulted in no movement saw a strong positive increase whereas there were very strong drops in likelihood for movement decisions. The other groups had far more mixed responses. Looking at the specific likelihood changes per movement decision (figure X) in unalaska we see that the likelihoods of decisions in an easterly direction actually dropped as compared to the movement heading model whereas for yakutat the directions that were already boosted by the movement heading model were further boosted by the addition of these features. Clearly understanding these marked differences between the unlaska and sitka and yakutat groups is key to understanding some important aspect of these individuals' movement behavior.
 
-Looking at the cases in figure \ref{fig:ll_increase} in which we see significant drops in log likelihood or cases where there is no meaningful change we can see that while there is predictive power in the features chosen thus far - especially for the yakutat, sitka, and nanwalek groups - there are still plenty of individuals that can act as exemplars for searching for new behavioral drivers. 
+\subsection*{Summary of EDA}
 
-For example in figure \ref{fig:chignik_map}, even with the addition of the productivity features in model 3 the westerly movements are still poorly predicted and would warrant investigation. 
+The purpose of these three example models was to show how by using this modeling process and looking at the likelihood changes per individual, decision, or group of choices, the modeling can be used to identify classes of behaviors that warrant additional investigation as well as general tendencies in the data. These kinds of outcomes are precisely the purpose of exploratory data analysis and are essential to building, and understanding, robust models. 
 
-Likewise the unalaska group is poorly explained in general and would represent another case study for further investigation. Perhaps by training a model with the same set of features as model 3 but only over this group we would see a significant improvement in the performance of the model which may lead us to look for demographic or geophysical differences that could explain how two different groups of fish are "using" the same covariates so differently. 
+\subsection*{Beyond EDA}
 
-All in all though, the models we have allow us to identify and focus upon individuals that so far resist our attempts to explain them. 
+While the primary focus of this example has been directed at the use of probabilistic models as tools for exploratory data analysis, their predictive capabilities should not be overlooked. One of the key strengths of probabilistic modeling lies in its ability to perform well even when the available features are only weakly predictive. By outputting probabilities rather than deterministic predictions, the model can effectively capture uncertainty and express it in a way that is both interpretable and actionable.
+
+In scenarios where features have low predictive power, deterministic models of behavior over time can struggle because of an accumulation of errors. Probabilistic models, on the other hand, distribute probability mass across choices, reflecting the underlying uncertainty in the data. This enables better decision-making under uncertainty, as the model not only identifies the most likely choices but also quantifies the likelihood of alternatives, given the data available.
+
+Moreover, the iterative refinement of these models makes them particularly valuable in predictive contexts. As new information comes to light or existing information is improved there is no need to rebuild or rethink models from scratch, instead the same framework can be used to build the old as well as new models. This allows for faster evaluation, more flexibility and freedom in considering new information, and therefore a better chance of picking features in a purely data driven manner. 
+
+\subsection*{Wide Applicability}
+
+Finally while this example focused on one species - Chinook salmon - and one aspect of behavior - movement - this methodology applies to any problem that can be framed in terms of discreet decisions $d_i$ and choices $c_i,j$. This could include movements of other species such as birds or mammals and other behaviors such as food selection, mating choices, or timing of spawning. By adapting the feature set and decision structure to the system of interest, researchers can reuse the same tools to study a wide variety of different behaviors. 
+
 
 \subsection*{Conclusion}
 
-This investigation demonstrates the power and flexibility of an iterative modeling approach for modeling behavior. By building baseline models and progressively refining them with additional covariates, we identify both predictive patterns and individuals resistant to explanation, which serve as focal points for further hypothesis generation. The efficiency of this process, enabled by quick training times and parallelization, ensures that refinement is limited only by the investigator's ability to propose and test new hypotheses. Crucially, at every stage, the models not only advance understanding but remain actionable for predictions, underscoring their dual utility as tools for both discovery and application. 
+This study highlights the dual power of probabilistic machine learning in providing both predictive insights and a robust framework for exploratory data analysis. The log-odds modeling technique exemplifies how dimensionality challenges can be overcome, and along with parallelism in the cloud enables rapid iteration and refinement of models to uncover patterns that would otherwise remain hidden. Ultimately, this framework is more than a predictive tool; it is an investigative lens, empowering researchers to probe the intricacies of behavior and the factors driving it. 
+
 
 \newpage
 
