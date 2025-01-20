@@ -37,13 +37,17 @@ University of Alaska Fairbanks
 }\makeatother
 
 
-\title{A Framework for Studying Animal Behavior Using Deep Learning}
+\title{Probabilistic Deep Learning as a Framework for Progressive Development of Behavior Models}
 
 \date{2024}
 \setcounter{tocdepth}{2}
 \begin{document}
 \maketitle
 
+
+\begin{center}
+The purpose of this paper is to (1) show folks that they can use probabilistic deep learning to drive a virtuous cycle of progressive model development where they always have a useful model as they go along and (2) give them a guide as to exactly how to do it.
+\end{center}
 
 \begin{center}
 This study explores using deep learning to build Individual-Based Models (IBMs). Using Chinook salmon (\textit{Oncorhynchus tshawytscha}) PSAT data as a case study, we introduce a methodology that leverages deep learning to transform the construction of IBMs into a systematic tool for investigating behaviors and their covariates. By employing a "log-odds model" to reduce dimensionality, this approach positions modeling as a central driver of discovery, enabling efficient hypothesis testing and iterative refinement.
@@ -53,43 +57,19 @@ This study explores using deep learning to build Individual-Based Models (IBMs).
 
 \section*{Introduction}
 
-Modeling organism behavior can be thought of as equivalent to modeling choices and selections. For example if modeling animal movement, we can imagine each timestep as a decision $d_i$ where the animal is selecting from a series of grid cells in its vicinity. Each such grid cell would represent a choice $c_{i,j}$. For each of these cells we may have a series of features $\vec{v}_{i,j}$ such as environmental covariates, descriptors such as distance or direction from the animal, and/or features of the animal itself or its state. Then we could pose our model as the function $F(\vec{v}_{i,j})$ which gives the probability of selecting $c_{i,j}$ given the information at hand. That is, we model the animal's behavior as a discrete Markov process. 
+We begin with a specific motivating example - animal movement. Animal movement can be modeled as a discrete Markov process by discretizing the environment into a grid. At each time step, the animal's movement can be represented as a decision, $d_i$, among a set of possible choices, $c_{i,j}$, where each choice corresponds to a grid cell the animal might reasonably move to given its current location. Then, with information about these choices, $\vec{v}_{i}$, the model would predict the conditional probability $P(c_{i,j} | \vec{v}_{i})$ - the likelihood of the animal moving to a specific grid cell in the next time step.
 
-The fact that this process produces probabilities per choice as opposed to explicit predictions of behavior is advantageous for two reasons:
+This approach differs from the more common practice of predicting specific movement parameters \citep{mlmovement1}, such as step lengths and turning angles, by instead focusing on probabilities across discrete options. This provides a key advantage in that even early-stage models with limited predictive power can still provide valuable insights. Models predicting specific movements require high precision to avoid compounding errors during simulation, probability-based models, on the other hand, allow for broader applications by tracking how an individual's probability mass spreads across potential trajectories over time. This flexibility enables model developers to deliver meaningful results early on, using available data, while continuing to refine and improve predictions as more information becomes available.
 
-\begin{enumerate}
-\item With a deterministic model that predicts a specific trajectory you require a high level of $\vec{v}_{i,j}$ to use the model beyond a small number of steps as errors can accumulate. Here because we are predicting probabilities across all trajectories we can see what $\vec{v}_{i,j}$ elucidates and what it doesn't.
-\item Because a specific likelihood is provided for each choice and trajectory we can identify specific decisions, individual organisms, places, or periods of time in which the model gives low likelihoods relative to the rest of the data making the model a tool for exploratory data analysis as well.
-\end{enumerate}
+This process of progressive development is further strengthened by leveraging early models as tools for exploratory data analysis (EDA). Because the model assigns a likelihood to each choice and trajectory, it can highlight specific decisions, individuals, locations, or time periods where the predicted likelihoods are unusually low compared to the rest of the data. These act as exemplars for further study. Additionally, as new models are developed, comparing likelihoods across versions can reveal what each model captures — or fails to capture — about the system. This makes the modeling process not only predictive but also a dynamic tool for uncovering patterns, refining hypotheses, and identifying areas that warrant deeper investigation.
 
-The fact that we have posed it in terms of distinct choices means that this is precisely a probabilistic machine learning problem \citep{durr} meaning that we can take advantage of machine learning to learn $F(\vec{v}_{i,j})$. This carries with it a few advantages as well. 
+The kind of progressive development described here is only feasible if the process of building and refining models - beyond the initial feature engineering - is quick and efficient. Iterative modeling and EDA become impractical if each iteration demands significant time and effort. Such efficiency can be enabled by recognizing that the framing proposed here is largely equivalent to that of a probabilistic deep learning classification task \citep{durr} - which enables developers to leverage the automation inherent in deep learning. Taking advantage of machine learning also means the tools used at one stage in the development are the same throughout the model's development - all that changes are the features input. 
 
-\begin{enumerate}
-\item Machine learning models, especially deep learning models, allow for very flexible pattern matching.
-\item Rather than having to rebuild a model for each addition or subtraction to $\vec{v}_{i,j}$ we can reuse the same tool set to build and validate models regardless of $\vec{v}_{i,j}$. 
-\end{enumerate}
+Each of the advantages described above — early value in development, utility in exploratory data analysis (EDA), and automation through machine learning — are not new to movement modeling. Hidden Markov Models, for example, inherently provide conditional probability distributions \citep{mlmovement1}, much like the framing presented here, and several movement models have been developed using machine learning \citep{mlmovement1}\citep{mlmovement2}\citep{mlmovement3}. However, the Markov models usually rely on explicit assumptions about the interaction between data and behavior, limiting their flexibility and integration with machine learning. Conversely, many machine learning models focus on explicit predictions of movement rather than offering likelihoods across all options. The value of the framework proposed here lies in its ability to combine these advantages, enabling progressive development through early value, application in EDA, and automation through machine learning. 
 
-This combination presents a kind of virtuous cycle in that the modeling process can be used to provide the very exploratory data analysis that can point to improvements in the model itself, and then whatever new features are derived can be incorporated into the model using the same tooling as before, thus allowing model development to supercharge itself. 
+Finally, while this application of probabilistic deep learning has so far been couched in the context of modeling movement, the framework — selecting among discrete choices — has the potential for broad applicability across a range of organism behaviors. The only requirement is the ability to represent the behavior in question within this discrete, choice-based structure.
 
-There is significant precedent here as Hidden Markov Models (HMMs) and machine learning have both seen extensive use in movement modeling \citep{mlmovement1}. However while each of these in turn bring some of the advantages outlined above they do not typically combine them. 
-
-Hidden Markov Models, by definition, do provide a conditioned probability distribution but the examples from the literature require explicit assumptions about how the data and behavior interact and therefore aren't able to take advantage of the flexibility and automation provided by machine learning \citep{mlmovement1}. Therefore they provide they can technically provide the first set of advantages but not the second. 
-
-The applications of machine learning in the space do the opposite. They allow for the flexible and automated training of models, but those models typically make explicit predictions on movement, such as regressions on step length and angle thereby providing the latter set of advantages but not the former \citep{mlmovement1}\citep{mlmovement2}\citep{mlmovement3}.  
-
-Only with the two together can you...
-
-Moreover with this more abstract and less explicit framing the applications are far broader...
-
-
-With this in mind this paper has two goals:
-
-\begin{enumerate}
-\item To provide a guide to using probabilistic deep learning to model animal behavior that demonstrates how to overcome some of the practical issues that arise in its application
-\item To demonstrate, through an illustrative example, how the artifacts of these models can be used as tools for EDA and thereby drive a virtuous model development cycle.
-\end{enumerate} 
-
-In order to further reduce the barrier to taking advantage of these techniques, the authors have provided a codebase at https://github.com/networkearth/mimic with all of the tooling required to setup probabilistic modeling in the cloud. 
+Given the potential of probabilistic deep learning as a framework for progressively developing animal behavior models, this paper has two primary objectives, and is organized as follows. (1) to provide a guide in overcoming some of the practical challenges that arise in applying probabilistic deep learning to behavioral data and (2) to provide an illustrative example, using Chinook salmon movement data, of how exploratory data analysis derived from the modeling process itself can be used to drive further model developments. With this guide, motivating example, and the accompanying code available at https://github.com/networkearth/mimic, it is hoped that this framework will help catalyze an iterative mode of discovery.
 
 \section*{Applying Probabilistic Machine Learning to Behavior}
 
