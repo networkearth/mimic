@@ -45,15 +45,6 @@ University of Alaska Fairbanks
 \maketitle
 
 
-\begin{center}
-The purpose of this paper is to (1) show folks that they can use probabilistic deep learning to drive a virtuous cycle of progressive model development where they always have a useful model as they go along and (2) give them a guide as to exactly how to do it.
-\end{center}
-
-\begin{center}
-This study explores using deep learning to build Individual-Based Models (IBMs). Using Chinook salmon (\textit{Oncorhynchus tshawytscha}) PSAT data as a case study, we introduce a methodology that leverages deep learning to transform the construction of IBMs into a systematic tool for investigating behaviors and their covariates. By employing a "log-odds model" to reduce dimensionality, this approach positions modeling as a central driver of discovery, enabling efficient hypothesis testing and iterative refinement.
-\end{center}
-
-
 
 \section*{Introduction}
 
@@ -71,11 +62,11 @@ Finally, while this application of probabilistic deep learning has so far been c
 
 Given the potential of probabilistic deep learning as a framework for progressively developing animal behavior models, this paper has two primary objectives, and is organized as follows. (1) to provide a guide in overcoming some of the practical challenges that arise in applying probabilistic deep learning to behavioral data and (2) to provide an illustrative example, using Chinook salmon movement data, of how exploratory data analysis derived from the modeling process itself can be used to drive further model developments. With this guide, motivating example, and the accompanying code available at https://github.com/networkearth/mimic, it is hoped that this framework will help catalyze an iterative mode of discovery.
 
-\section*{Applying Probabilistic Machine Learning to Behavior}
+\section*{Guidance on Applying the Technique}
 
 \subsection*{Theory}
 
-Standard probabilistic deep learning networks are typically framed as a classification problem, using categorical cross-entropy as the loss function \citep{durr}. Each output neuron represents a potential choice, with the model predicting the probability of each choice being correct based on this loss formulation. For these choices, we provide the network with features encapsulating the relevant information. Training is then comprised of providing a series such decisions. 
+Standard probabilistic deep learning networks are typically framed as a classification problem, using categorical cross-entropy as the loss function \citep{durr}. Using such a loss function amounts to minimizing the negative log likelihood across the examples in the training data. Each output neuron represents a potential choice, with the model predicting the probability of each choice being correct based on this loss formulation. For these choices, we provide the network with features encapsulating the relevant information. Training is then comprised of providing a series such decisions. 
 
 However, this formulation introduces a critical challenge: if there are $N$ features per choice and $M$ potential choices, the overall dimensionality of the input space becomes $N \cdot M$. Adding even a single feature increases the dimensionality by $M$ not just 1.
 
@@ -83,11 +74,18 @@ This growth poses a significant challenge due to the "curse of dimensionality", 
 
 \subsection*{Log-Odds Modeling}
 
-To address this issue we could take advantage of the order invariance of choices in the traditional probabilistic problem framing. Specifically, the order in which choices are presented to the model should not matter. For instance, whether a particular choice appears in the first or the thirteenth position should have no impact on the model's operation. This property allows for data augmentation by reordering choices.
+To address this issue we could take advantage of the order invariance of choices in the traditional framing. In other words the order in which choices are presented to the model should not matter. For instance, whether a particular choice appears in the first or the thirteenth position should have no impact on the model's operation. This property allows for data augmentation by reordering choices. In essence, for each training example, $M!$ (factorial of the number of choices) augmented examples can be created.
 
-In essence, for each training example, $M!$ (factorial of the number of choices) augmented examples can be created.
+The issue with this approach is that as your augmented data size grows to match the needs of the greater dimensionality, so too does the time required for training. So while the problem remains theoretically possible, the potential exponential uptick in time complexity poses a significant practical issue. \newline
 
-The issue with this approach is that as your augmented data size grows to match the needs of the greater dimensionality, so too does the time required for training. So while the problem remains theoretically possible, the potential exponential uptick in time complexity poses a significant practical issue. 
+\begin{figure}[h!] 
+	\centering
+  \includegraphics[height=55mm]{figures/log_odds.png}
+  \caption{Log-Odds Model: Each choice is passed through a log odds model (left) whose output is then passed through a softmax layer whose weights are fixed in order to produce probabilities that can be passed to a categorical cross entropy loss function. By sharing weights between choices we effectively reduce the dimensionality of the problem. }
+  \label{fig:log_odds}
+\end{figure}
+
+\FloatBarrier
 
 
 Instead we propose an adjustment to the standard framing of probabilistic machine learning. Instead of predicting the probabilities directly, we predict the log-odds $\phi_m$ for each choice and calculate the probability $p_m$ using the softmax function:
@@ -96,7 +94,7 @@ $$p_m = \frac{e^{\phi_m}}{\sum_{m=1}^{M}e^{\phi_m}}$$
 
 This approach reduces the feature space dimensionality to $N$ and effectively increases the number of training examples by a factor of $M$.
 
-We can implement this log-odds model using standard probabilistic deep learning techniques by replicating the "log-odds model" weights across all $M$ choices. The outputs are fed into a softmax layer with $M$ units, where the layer's weights are set to the identity matrix and biases are set to zero. Using categorical cross-entropy as the loss function ensures compatibility with standard probabilistic deep learning while enabling us to train the log-odds weights and significantly reduce the problem's dimensionality.
+We can implement this log-odds model using standard probabilistic deep learning techniques by replicating the "log-odds model" weights across all $M$ choices (Figure \ref{fig:log_odds}). The outputs are fed into a softmax layer with $M$ units, where the layer's weights are set to the identity matrix and biases are set to zero. Using categorical cross-entropy as the loss function ensures compatibility with standard probabilistic deep learning while enabling us to train the log-odds weights and significantly reduce the problem's dimensionality.
 
 \subsection*{Contrast Sampling}
 
@@ -104,32 +102,30 @@ A practical issue with our log-odds framing is that as $M$ grows large most inst
 
 To address this, we balance the training data. Instead of presenting the model with full decisions containing all $M$ choices, we create training pairs, or contrasts, where each pair consists of one selected choice and one unselected choice. This approach is valid because the log-odds model focuses on the relative likelihood of choices, making the number of choices considered at any one time irrelevant.
 
-The primary risk in using contrasts is introducing bias by disproportionately sampling certain combinations of choices. To mitigate this, we randomly sample pairs from each decision, ensure an equal number of contrasts per decision, and an equal number of decisions per individual. This preserves the balance across the training data and avoids skewing the model's predictions.
+The primary risk in using contrasts is introducing bias by disproportionately sampling certain combinations of choices. To mitigate this, we randomly sample pairs from each decision, ensure an equal number of contrasts per decision, and an equal number of decisions per individual. This preserves the balance across the training data and avoids skewing the model's learning.
 
 \subsection*{Taking Advantage of the Cloud}
 
-In deep learning the specific layer sizes, depth, optimizer, learning rate, and other parameters best suited to a particular problem are not usually known from the start. Therefore it is important to do hyperparameter tuning in order to discover the best parameters for a particular problem. Practically this means training large numbers of models - a process that is usually very compute intensive. Even with just 3 parameters each of which can take on five results in 125 distinct models. Furthermore as with any search over a non-convex space (as backpropogation is) the initial seed can have impacts on the final solution. Therefore, training deep learning models requires training many models per problem.
+Finally, in deep learning the specific layer sizes, depth, optimizer, learning rate, and other parameters best suited to a particular problem are not usually known from the start. Therefore it is important to do hyperparameter tuning in order to discover the best parameters for a particular problem. Practically this means training large numbers of models - a process that is usually very compute intensive. Even with just 3 parameters 5 distinct values each results in 125 distinct models. Furthermore as with any search over a non-convex space, the initial seed can have impacts on the final solution. Therefore, training deep learning models requires training many models per problem.
 
-This issue can be overcome by virtue of the fact that these models can all be trained independently and therefore in parallel. This is a perfect use case for cloud compute where one can spin up, for a short time and for a reasonable cost, a large number of machines and therefore do all of the hyperparameter tuning in parallel. 
+This challenge can be overcome by virtue of the fact that these models can all be trained independently and therefore in parallel. This is a perfect use case for cloud compute where one can spin up, for a short time and a reasonable cost, a large number of machines and do all of the hyperparameter tuning in parallel. A primary benefit of the code at https://github.com/networkearth/mimic is to help do exactly this. 
 
 \subsection*{Summary}
 
-In summary the application of probabilistic modeling proposed here follows three steps:
+In summary the steps in applying log-odds modeling are:
 
 \begin{enumerate}
 \item Discretize the behaviors into distinct decisions $d_i$ and choices $c_i,j$. 
 \item Resample the choices using contrast sampling
 \item Apply log-odds modeling to the contrasts, taking advantage of cloud compute to efficiently search the hyperparameter space
-\item Use the trained model to make inferences on the original decisions
+\item Use the trained model to make inferences on the original decisions (as opposed to the contrasts)
 \end{enumerate}
-
-The following example application demonstrates these steps in practice. 
 
 \section*{Application to Chinook Salmon Movement Data}
 
 \subsection*{Outline}
 
-This example will involve building three models of Chinook salmon (\textit{Oncorhynchus tshawytscha}) movement that build upon one another. These specific models were chosen to illustrate the capabilities of this technique as an exploratory data analysis (EDA) tool. The features are described in the following table: 
+With this guide in hand we will proceed to demonstrate this technique by building three, very simply, models of Chinook salmon (\textit{Oncorhynchus tshawytscha}) movement. These specific models build on one another and were chosen to illustrate how one might use this technique as an exploratory data analysis (EDA) tool. The features for each model are as follows (the + indicating the model takes on the features of the model above it in addition to those listed in its row): 
 
 \begin{center}
 \begin{tabular}{| c | c  | } 
@@ -157,33 +153,40 @@ Food Model & Explore deviations from averages due to productivity \\
 \end{tabular}
 \end{center} 
 
-We will begin by describing the data and associated features, then move onto a description of the building of the models, and finally, in the results and discussion, illustrate how the models can be used to explore the data. 
+We will begin by describing the data and associated features, then move onto the specifics of training the models (following our guide), and finally, in the results and discussion, illustrate how the models can be used to explore the data. 
 
 \subsection*{Data and Features}
 
 The data used is a series of tracks from 111 Chinook salmon (\textit{Oncorhynchus tshawytscha}) caught and monitored between 2013 and 2022 \citep{tags1} \citep{tags2}. These tracks were obtained from pop-up satellite archival tags which collect temperature, light level, and depth information at specified (sub day) intervals. This data is then passed through a proprietary algorithm from Wildlife Computers to determine likely longitude and latitude during each day of of monitoring \citep{PSAT}. \newline
 
-Environmental data was derived from the Global Ocean Biogeochemistry Hindcast dataset (10.48670/moi-00019) and the Global Ocean Physics Reanalysis (10.48670/moi-00021) from the E.U. Copernicus Marine Service Information. Net primary production (mg/m3/day) and mixed layer thickness (m) were aggregated per Uber h3 resolution 4 cell in the Northern Pacific. \newline
+\begin{figure}[h!] 
+	\centering
+  \includegraphics[height=55mm]{figures/mlt_2021_07_02.png}
+  \caption{Mixed layer thickness (m) per h3 cell (resolution 4) on July 2, 2021.}
+  \label{fig:mlt}
+\end{figure}
 
-Movement heading in radians and distance to the centroid of the choice cell were computed and then mixed layer thickness and net primary production were joined to the choices on cell and day.
+Environmental data was derived from the Global Ocean Biogeochemistry Hindcast dataset (10.48670/moi-00019) and the Global Ocean Physics Reanalysis (10.48670/moi-00021) from the E.U. Copernicus Marine Service Information. Net primary production (mg/m3/day) and mixed layer thickness (m) were aggregated per Uber h3 resolution 4 cell in the Northern Pacific. As a reference for the resolution of the data see Figure \ref{fig:mlt}. \newline
 
-Distance was normalized to a range of 0-1 by division by 100, while mixed layer thickness and net primary production were both log-scaled and then centered at zero. 
+Movement heading in radians and distance to the centroid of the choice cell were computed. Mixed layer thickness and net primary production were joined to the choices on h3 cell index and day.
+
+Distance was normalized to a range of 0-1 through division by 100, while mixed layer thickness and net primary production were both log-scaled and then centered at zero. 
 
 \subsection*{Building the Models}
 
 \subsubsection*{Train and Validation Sets} 
 
-The first step in any other machine learning problem is splitting training and validation sets. Given the low number of individuals in the sample and the intention to demonstrate the technique's value as an EDA tool it was decided to not maintain a hold out test set.
+The first step was to split into training and validation sets. Given the low number of individuals in the sample and the intention to demonstrate the technique's value as an EDA tool it was decided to not maintain a hold out test set.
 
 71 individuals were randomly selected for training and 40 for validation.
 
 \subsubsection*{Formulation}
 
-The next step in building a log-odds model is to decide on the formulation of our choices. In our case we decided to grid space by Uber h3 cells at resolution 4. Specifically, the cell containing each salmon location from our data was identified and then, assuming a maximum travel distance of 100km (centeroid to centeroid) all adjacent cells within the 100km were identified as choices (including the currently occupied cell). In general this represented $\sim 19$ choices per decision with the intention being to predict the probability of moving to any particular cell. Training data was derived by identifying the actual cell moved to. 
+The next step in building a log-odds model is to decide on the formulation of our choices. In our case we decided to grid space by Uber h3 cells at resolution 4. Specifically, the cell containing each salmon location from our data was identified and then, assuming a maximum travel distance of 100km (centroid to centeroid) all adjacent cells within the 100km were identified as choices (including the currently occupied cell). In general this represented $\sim 19$ choices per decision. As such our model ends up predicting the probability, given the data, of moving to any one of those cells. Training data was derived by identifying the actual cell moved to. 
 
 \subsubsection*{Contrast Sampling}
 
-The next step in building a log-odds model is determining the specifics of the contrast sampling. For this example, after inspecting the distribution of number of choices per salmon and number of choices per decision, we decided on random sampling (with replacement) 200 decisions per individual and 19 choices per decision. 
+Next we needed to determine the specifics of the contrast sampling. For this example, after inspecting the distribution of number of choices per salmon and number of choices per decision, we decided on random sampling (with replacement) 200 decisions per individual and 19 choices per decision. 
 
 Over a validation/training split of 40, 71 this resulted in 421,800 contrasts of which 269,800 were used in training and the rest in validation. 
 
@@ -192,7 +195,7 @@ Note that only 14,200 training examples would've been available to a traditional
 
 \subsection*{Training and Model Selection}
 
-For each of the three models trained architectures/hyperparameters for the internal log-odds component of the model were parametrized in the following ways:
+For each of the three models trained, the hyperparameters for the internal log-odds component of the model were parametrized in the following way:
 
 \begin{center}
 \begin{tabular}{| c | c |} 
@@ -207,10 +210,9 @@ Learning Rate & 0.0005 \\
 \end{tabular}
 \end{center}
 
-5 separate seeds were used for each combination. Models were trained in Keras using an Adam optimizer for 100 epochs. Training was done on AWS Batch using Fargate instances of 2 vcpu's and 4 GB of memory. By taking advantage of AWS Batch,  models could be all trained in parallel allowing for short (~1 hour) turn around times. 
+We proceeded by grid search and used 5 separate seeds for each combination. Models were trained in Keras using an Adam optimizer for 100 epochs. Training was done on AWS Batch using Fargate instances of 2 vcpu's and 4 GB of memory. By taking advantage of AWS Batch,  models could be all trained in parallel allowing for short (~1 hour) turn around times. 
 
 Lowest loss (categorical cross entropy) at the end of the 100 epochs over the validation dataset was used to select the best set of parameters for each of the three models trained.
-
 
 
 \section*{Results}
