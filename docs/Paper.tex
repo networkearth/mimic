@@ -217,7 +217,7 @@ Lowest loss (categorical cross entropy) at the end of the 100 epochs over the va
 
 \section*{Results}
 
-The loss, categorical cross entropy, is equivalent to the average (normalized) log probability per contrast. For an equivalent metric over the actual decisions made by the individuals we computed the average log probability per decision for each individual and then computed an average over those across individuals (in order to not favor individuals with many decisions). This is the D-NLP reported in the table below. 
+The loss used in training - categorical cross entropy - is equivalent to the average negative log likelihood per contrast. For an equivalent metric over the decisions made by the individuals (as opposed to the contrasts) we computed the average log likelihood per decision for each individual and then computed an average over those across individuals (in order to prevent a bias toward individuals with large numbers of recorded decisions). This is the D-NLP reported in the table below. The C-NLP is the same but over the contrasts. Train and Val refer to the training and validation sets respectively.
 
 \begin{center}
 \begin{tabular}{| c | c | c | c | c |}
@@ -234,36 +234,26 @@ Food & -0.147 & -0.146 & -1.248 & -1.180 \\
 
 "No Model" assumes all decisions are equally likely, "Distance" is the distance only model, "Heading" adds the movement heading, and "Food" adds the net productivity and mixed layer thickness features. \newline
 
+Besides these cumulative results over all the fish in the study it is also interesting to look at the results per individual. Figures \ref{fig:ll_val} and \ref{fig:ll_train} give the incremental mean difference in log likelihood per decision plotted by individual and split by the validation and training sets respectively. 
+
 \begin{figure}[h!] 
 	\centering
-  \includegraphics[height=70mm]{figures/ll_increase.png}
-  \caption{Log likelihood increase (unnormalized) per individual of each model change.}
-  \label{fig:ll_increase}
+  \includegraphics[height=110mm]{figures/ll_change_val.png}
+  \caption{Validation Set: mean log likelihood increase per decision plotted per individual and colored  by the region the fish was caught. Tag keys along the x-axis identify each individual. The top plot shows the difference between the distance and null models, the middle plot the difference between heading and distance, and the bottom plot the difference between the food and heading models.}
+  \label{fig:ll_val}
 \end{figure}
 
 \begin{figure}[h!] 
 	\centering
-  \includegraphics[height=70mm]{figures/ll_increase_no_movement.png}
-  \caption{Log likelihood increase (unnormalized) per individual of each model change in cases where the selection involved no movement.}
-  \label{fig:ll_increase_no_movement}
+  \includegraphics[height=110mm]{figures/ll_change_train.png}
+  \caption{Training Set: mean log likelihood increase per decision plotted per individual and colored  by the region the fish was caught. Tag keys along the x-axis identify each individual. The top plot shows the difference between the distance and null models, the middle plot the difference between heading and distance, and the bottom plot the difference between the food and heading models.}
+  \label{fig:ll_train}
 \end{figure}
 
 \FloatBarrier
 
-\begin{figure}[h!] 
-	\centering
-  \includegraphics[height=70mm]{figures/ll_increase_movement.png}
-  \caption{Log likelihood increase (unnormalized) per individual of each model change in cases where the selection involved movement.}
-  \label{fig:ll_increase_movement}
-\end{figure}
 
-
-
-Figure \ref{fig:ll_increase} shows the unnormalized changes in log likelihood for each individual colored by the region in which they were initially tagged as we go from one model to the next. Figures \ref{fig:ll_increase_no_movement} and \ref{fig:ll_increase_movement} break this down for decisions that resulted in no movement and movement respectively. Only individuals in the validation set were considered.
-
-The appendix contains a series of mapped examples (figures \ref{fig:chignik_map}-\ref{fig:yakutat_map}) from each of these regions (besides EBS) that shows how the log likelihood per decision (when moving) changed in moving from model 1 to model 2 and then from model 2 to model 3. As in the above, only individuals in the validation set were considered.\newline
-
-Finally as much of the behavior seems to be modulated by movement distances (or lack of movement) a summary table of empirical likelihood of movement of a specific distance is given (taken over all individuals). 
+Finally, much of the behavior seems to be modulated by movement distances (or lack of movement). The following is a summary table of empirical likelihood of movement to a specific distance is given (taken over all individuals). 
 
 \begin{center}
 \begin{tabular}{| c | c | c |}
