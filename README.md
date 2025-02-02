@@ -1,6 +1,6 @@
 # mimic
 
-Toolset for building behavioral models in AWS. 
+Toolset for building and using animal behavior models in AWS. 
 
 Check out the [wiki](https://github.com/networkearth/mimic/wiki)!
 
