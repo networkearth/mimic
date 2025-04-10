@@ -8,8 +8,10 @@ import boto3
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Input, concatenate
+from tensorflow.keras.layers import Dense, Input, concatenate, InputLayer
 from tensorflow.keras import optimizers
+from tensorflow.keras.callbacks import ModelCheckpoint
+import keras
 import numpy as np
 import pandas as pd
 
@@ -227,7 +229,15 @@ def train_model(config_path):
     # for a real indication of the loss we'll want this callback
     train_eval_callback = TrainingEvaluationCallback(train)
 
-    history = model.fit(train, validation_data=test, epochs=epochs, callbacks=[train_eval_callback])
+    checkpoint = ModelCheckpoint(
+        filepath='model.keras',
+        monitor='val_loss',
+        save_best_only=True,
+        mode='min',
+        verbose=1
+    )
+
+    history = model.fit(train, validation_data=test, epochs=epochs, callbacks=[train_eval_callback, checkpoint])
     results = build_results(history)
     results['experiment_name'] = config['experiment_name']
     results['run_id'] = config['run_id']
@@ -235,7 +245,13 @@ def train_model(config_path):
     os.environ["HAVEN_DATABASE"] = config["database"]
     db.write_data(results, config["table"], ['experiment_name', 'run_id'])
 
-    model = build_export_model(features, layers)
+    early_stop_model = keras.models.load_model('model.keras')
+    early_stop_layers = [
+        layer for layer in early_stop_model.layers[:-2]
+        if not isinstance(layer, InputLayer)
+    ]
+
+    model = build_export_model(features, early_stop_layers)
 
     model.save('model.keras')
 
